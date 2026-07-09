@@ -1,3 +1,4 @@
+import axios from '@nextcloud/axios'
 import { getSidebar, FileType } from '@nextcloud/files'
 import { generateUrl } from "@nextcloud/router"
 import { t } from '@nextcloud/l10n'
@@ -19,16 +20,20 @@ class MetadataTabView extends HTMLElement {
         var url = generateUrl('/apps/metadata/get'),
             data = {source: this.node.dirname + '/' + this.node.basename},
             _self = this;
-        $.ajax({
-            type: 'GET',
-            url: url,
-            dataType: 'json',
-            data: data,
-            async: true,
-            success: function(data) {
+
+        return axios
+            .get(
+                `${url}?source=${encodeURIComponent(data.source)}`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    }
+                },
+            )
+            .then(response => {
+                const data = response.data
                 _self.updateDisplay(data);
-            }
-        });
+            })
     }
 
     formatValue(value) {
@@ -40,13 +45,20 @@ class MetadataTabView extends HTMLElement {
         var showLocation = false;
 
         if (data.response === 'success') {
-            table = $('<table>');
+            table = document.createElement('table');
 
             var metadata = data.metadata;
             for (var m in metadata) {
-                var row = $('<tr>')
-                    .append($('<td>').addClass('key').text(m + ':'))
-                    .append($('<td>').addClass('value').text(this.formatValue(metadata[m])));
+                var elKey = document.createElement('td');
+                elKey.classList.add('key');
+                elKey.textContent = m + ':';
+                var elValue = document.createElement('td');
+                elValue.classList.add('value');
+                elValue.textContent = this.formatValue(metadata[m]);
+
+                var row = document.createElement('tr');
+                row.append(elKey);
+                row.append(elValue);
                 table.append(row);
             }
 
@@ -93,10 +105,13 @@ class MetadataTabView extends HTMLElement {
             }
 
         } else {
-            table = $('<p>').text(data.msg);
+            table = document.createElement('p')
+            table.textContent = data.msg;
         }
 
-        $(this).find('.get-metadata').empty().append(table);
+        const el = document.querySelector('.get-metadata');
+        [...el.children].forEach(c => el.removeChild(c));
+        el.append(table);
 
         if (showLocation) {
             var _self = this;
