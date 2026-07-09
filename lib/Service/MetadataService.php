@@ -6,14 +6,16 @@ use OCA\Metadata\GetID3\getID3;
 use OCP\Files\FileInfo;
 use OCP\L10N\IFactory;
 
-class MetadataService {
+class MetadataService
+{
     const EMSP = "\xe2\x80\x83";
     const BLACK_STAR = "\xE2\x98\x85";
     const WHITE_STAR = "\xE2\x98\x86";
 
     protected $language;
 
-    public function __construct(IFactory $languageFactory) {
+    public function __construct(IFactory $languageFactory)
+    {
         $this->language = $languageFactory->get(Application::APP_ID);
     }
 
@@ -21,7 +23,8 @@ class MetadataService {
      * @NoAdminRequired
      * @throws \Exception
      */
-    public function getMetadata($file) {
+    public function getMetadata($file)
+    {
         if ($file->getType() !== FileInfo::TYPE_FILE) {
             return null;
         }
@@ -46,7 +49,7 @@ class MetadataService {
             case 'video/x-msvideo':
                 if ($sections = $this->readId3($file)) {
                     $metadata = $this->getAvMetadata($sections);
-//                    $metadata->dump($sections);
+                    //                    $metadata->dump($sections);
                 }
                 break;
 
@@ -111,7 +114,8 @@ class MetadataService {
         return $metadata;
     }
 
-    protected function readId3($file) {
+    protected function readId3($file)
+    {
         if ($hnd = $file->fopen('r')) {
             $getId3 = new getID3();
             $getId3->option_save_attachments = false;
@@ -122,14 +126,15 @@ class MetadataService {
         return false;
     }
 
-    protected function readJpeg($file) {
-        return $this->withFile($file, function($hnd) {
+    protected function readJpeg($file)
+    {
+        return $this->withFile($file, function ($hnd) {
             if ($sections = $this->getExif($hnd)) {
                 rewind($hnd);
 
                 if ($jpegMetadata = JpegMetadata::fromFile($hnd)) {
                     $sections['XMP'] = array_merge($jpegMetadata->getIptc(), $jpegMetadata->getXmp());
-                    $sections['IFD0'] = array_merge((array)$this->getVal('IFD0', $sections), $jpegMetadata->getIfd0());
+                    $sections['IFD0'] = array_merge((array) $this->getVal('IFD0', $sections), $jpegMetadata->getIfd0());
                     if (!array_key_exists('GPS', $sections)) {
                         $sections['GPS'] = $jpegMetadata->getGps();
                     }
@@ -142,14 +147,15 @@ class MetadataService {
         });
     }
 
-    protected function readTiff($file) {
-        return $this->withFile($file, function($hnd) {
+    protected function readTiff($file)
+    {
+        return $this->withFile($file, function ($hnd) {
             if ($sections = $this->getExif($hnd)) {
                 rewind($hnd);
 
                 if ($tiffMetadata = TiffMetadata::fromFile($hnd)) {
                     $sections['XMP'] = array_merge($tiffMetadata->getIptc(), $tiffMetadata->getXmp());
-                    $sections['IFD0'] = array_merge((array)$this->getVal('IFD0', $sections), $tiffMetadata->getIfd0());
+                    $sections['IFD0'] = array_merge((array) $this->getVal('IFD0', $sections), $tiffMetadata->getIfd0());
                 }
 
                 return $sections;
@@ -159,8 +165,9 @@ class MetadataService {
         });
     }
 
-    protected function readRaw($file) {
-        $sections = $this->withFile($file, function($hnd) {
+    protected function readRaw($file)
+    {
+        $sections = $this->withFile($file, function ($hnd) {
             return $this->getExif($hnd);
         });
 
@@ -172,7 +179,7 @@ class MetadataService {
                 $file = $folder->get($sidecar);
 
                 if ($file->getType() === FileInfo::TYPE_FILE) {
-                    $xmpMetadata = $this->withFile($file, function($hnd) {
+                    $xmpMetadata = $this->withFile($file, function ($hnd) {
                         return XmpMetadata::fromFile($hnd);
                     });
 
@@ -186,14 +193,16 @@ class MetadataService {
         return $sections;
     }
 
-    protected function readHeic($file) {
-        return $this->withFile($file, function($hnd) {
+    protected function readHeic($file)
+    {
+        return $this->withFile($file, function ($hnd) {
             return (($heicMetadata = HeicMetadata::fromFile($hnd)) !== null) ? $heicMetadata->getExif() : false;
         });
     }
 
-    protected function readGif($file) {
-        return $this->withFile($file, function($hnd) {
+    protected function readGif($file)
+    {
+        return $this->withFile($file, function ($hnd) {
             $computed = array();
             $this->getImageSize($file, $computed);
 
@@ -203,11 +212,12 @@ class MetadataService {
         });
     }
 
-    protected function readPng($file) {
+    protected function readPng($file)
+    {
         $computed = array();
         $this->getImageSize($file, $computed);
 
-        $pngMetadata = $this->withFile($file, function($hnd) {
+        $pngMetadata = $this->withFile($file, function ($hnd) {
             return PngMetadata::fromFile($hnd);
         });
 
@@ -217,7 +227,8 @@ class MetadataService {
         );
     }
 
-    protected function getImageSize($file, &$return) {
+    protected function getImageSize($file, &$return)
+    {
         if (($size = getimagesize($file->getStorage()->getLocalFile($file->getInternalPath()))) !== false) {
             $return['Width'] = $size[0];
             $return['Height'] = $size[1];
@@ -226,7 +237,8 @@ class MetadataService {
         return $return;
     }
 
-    protected function getExif($hnd) {
+    protected function getExif($hnd)
+    {
         if (!function_exists('exif_read_data')) {
             throw new \Exception($this->t('EXIF support is missing; you might need to install an appropriate package for your system.'));
         }
@@ -234,14 +246,16 @@ class MetadataService {
         return @exif_read_data($hnd, 0, true);
     }
 
-    protected function readMts($file) {
-        return $this->withFile($file, function($hnd) {
+    protected function readMts($file)
+    {
+        return $this->withFile($file, function ($hnd) {
             return MtsMetadata::fromFile($hnd);
         });
     }
 
-    protected function readPdf($file) {
-        return $this->withFile($file, function($hnd) {
+    protected function readPdf($file)
+    {
+        return $this->withFile($file, function ($hnd) {
             if ($pdfMetadata = PdfMetadata::fromFile($hnd)) {
                 return array(
                     'COMPUTED' => array(
@@ -256,22 +270,24 @@ class MetadataService {
         });
     }
 
-    protected function readZip($file) {
-          $computed = array();
+    protected function readZip($file)
+    {
+        $computed = array();
 
-          $zip = new \ZipArchive();
-          if ($zip->open($file->getStorage()->getLocalFile($file->getInternalPath())) === true) {
-              $computed['numFiles'] = $zip->numFiles;
-              $computed['comment'] = $zip->comment;
-              $zip->close();
-          }
+        $zip = new \ZipArchive();
+        if ($zip->open($file->getStorage()->getLocalFile($file->getInternalPath())) === true) {
+            $computed['numFiles'] = $zip->numFiles;
+            $computed['comment'] = $zip->comment;
+            $zip->close();
+        }
 
-          return array(
-              'COMPUTED' => $computed
-          );
+        return array(
+            'COMPUTED' => $computed
+        );
     }
 
-    protected function withFile($file, callable $fn) {
+    protected function withFile($file, callable $fn)
+    {
         if ($hnd = $file->fopen('r')) {
             try {
                 return $fn($hnd);
@@ -284,7 +300,8 @@ class MetadataService {
         return false;
     }
 
-    protected function getAvMetadata($sections) {
+    protected function getAvMetadata($sections)
+    {
         $return = array();
         $lat = null;
         $lon = null;
@@ -340,7 +357,7 @@ class MetadataService {
         }
 
         if ($v = $this->getVal('bitrate', $sections)) {
-            $this->addVal($this->t('Bit rate'), $this->t('%s kbps', array(floor($v/1000))), $return);
+            $this->addVal($this->t('Bit rate'), $this->t('%s kbps', array(floor($v / 1000))), $return);
         }
 
         if ($v = $this->getVal('author', $quicktime)) {
@@ -349,6 +366,10 @@ class MetadataService {
 
         if ($v = $this->getVal('copyright', $quicktime)) {
             $this->addVal($this->t('Copyright'), $v, $return);
+        }
+
+        if ($v = $this->getValM('text', $tags)) {
+            $this->addVal($this->t('Replay track gain'), $v['replaygain_track_gain'], $return);
         }
 
         if ($v = $this->getVal('make', $quicktime) ?: $this->getVal('camera', $video)) {
@@ -383,7 +404,7 @@ class MetadataService {
         }
 
         if ($v = $this->getVal('sample_rate', $audio)) {
-            $this->addVal($this->t('Audio sample rate'), $this->t('%s kHz', array($v/1000)), $return);
+            $this->addVal($this->t('Audio sample rate'), $this->t('%s kHz', array($v / 1000)), $return);
         }
 
         if ($v = $this->getVal('bits_per_sample', $audio)) {
@@ -393,7 +414,7 @@ class MetadataService {
         if ($v = $this->getVal('bitrate', $audio)) {
             $b = $this->getVal('bitrate', $sections);
             if (!$b || $v !== $b) {
-                $this->addVal($this->t('Audio bit rate'), $this->t('%s kbps', array(floor($v/1000))), $return);
+                $this->addVal($this->t('Audio bit rate'), $this->t('%s kbps', array(floor($v / 1000))), $return);
             }
         }
 
@@ -448,7 +469,8 @@ class MetadataService {
         return new Metadata($return, $lat, $lon);
     }
 
-    protected function getImageMetadata($sections) {
+    protected function getImageMetadata($sections)
+    {
         $return = array();
         $lat = null;
         $lon = null;
@@ -670,7 +692,8 @@ class MetadataService {
         return new Metadata($return, $lat, $lon, $loc);
     }
 
-    protected function getPdfMetadata($sections) {
+    protected function getPdfMetadata($sections)
+    {
         $return = array();
 
         $comp = $this->getVal('COMPUTED', $sections) ?: array();
@@ -734,7 +757,8 @@ class MetadataService {
         return new Metadata($return);
     }
 
-    protected function getArchiveMetadata($sections) {
+    protected function getArchiveMetadata($sections)
+    {
         $return = array();
 
         $comp = $this->getVal('COMPUTED', $sections) ?: array();
@@ -750,11 +774,13 @@ class MetadataService {
         return new Metadata($return);
     }
 
-    protected function apexToF($val) {
+    protected function apexToF($val)
+    {
         return 'f/' . sprintf('%01.1f', round(pow(2, $val / 2), 1));
     }
 
-    protected function formatExposureProgram($code) {
+    protected function formatExposureProgram($code)
+    {
         switch ($code) {
             case 0:
                 return $this->t('Not defined');
@@ -779,7 +805,8 @@ class MetadataService {
         }
     }
 
-    protected function formatExposureMode($mode) {
+    protected function formatExposureMode($mode)
+    {
         switch ($mode) {
             case 0:
                 return $this->t('Auto exposure');
@@ -792,7 +819,8 @@ class MetadataService {
         }
     }
 
-    protected function formatMeteringMode($mode) {
+    protected function formatMeteringMode($mode)
+    {
         switch ($mode) {
             case 0:
                 return $this->t('Unknown');
@@ -813,7 +841,8 @@ class MetadataService {
         }
     }
 
-    protected function formatFlashMode($mode) {
+    protected function formatFlashMode($mode)
+    {
         if ($mode & 0x20) {
             return $this->t('No flash function');
 
@@ -836,7 +865,8 @@ class MetadataService {
         }
     }
 
-    protected function formatFourCc($code) {
+    protected function formatFourCc($code)
+    {
         switch ($code) {
             case 'avc1':
                 return $this->t('H.264 - MPEG-4 AVC (part 10)');
@@ -845,7 +875,8 @@ class MetadataService {
         }
     }
 
-    protected function formatRating($rating) {
+    protected function formatRating($rating)
+    {
         $return = '';
         $rating = min($rating, 5);
 
@@ -855,11 +886,13 @@ class MetadataService {
         return $return;
     }
 
-    protected function formatTrueFalse($val) {
+    protected function formatTrueFalse($val)
+    {
         return ($val === 'True') ? $this->t('Yes') : (($val === 'False') ? $this->t('No') : $this->t('Unknown'));
     }
 
-    protected function evalGpsCoord($coord) {
+    protected function evalGpsCoord($coord)
+    {
         $return = null;
 
         if ((count($coord) === 3) && ($coord[0] !== '0/0')) {
@@ -873,7 +906,8 @@ class MetadataService {
         return $return;
     }
 
-    protected function formatGpsCoord($coord, $ref) {
+    protected function formatGpsCoord($coord, $ref)
+    {
         $return = $ref . ' ' . $coord[0] . '°';
 
         if ($coord[1] || $coord[2]) {
@@ -887,15 +921,18 @@ class MetadataService {
         return $return;
     }
 
-    protected function evalGpsAlt($coord) {
+    protected function evalGpsAlt($coord)
+    {
         return ($coord !== '0/0') ? $this->evalRational($coord) : null;
     }
 
-    protected function formatGpsAlt($coord, $ref) {
+    protected function formatGpsAlt($coord, $ref)
+    {
         return (($ref === 1) ? '-' : '') . round($coord, 1) . ' m';
     }
 
-    protected function formatGpsDegree($deg, $posRef, $negRef) {
+    protected function formatGpsDegree($deg, $posRef, $negRef)
+    {
         $return = ($deg >= 0) ? $posRef : $negRef;
         $deg = abs($deg);
 
@@ -913,21 +950,25 @@ class MetadataService {
         return $return;
     }
 
-    protected function gpsToDecDegree($coord, $pos) {
+    protected function gpsToDecDegree($coord, $pos)
+    {
         $return = round($coord[0] + ($coord[1] / 60) + ($coord[2] / 3600), 8);
 
-        return $pos? $return : -$return;
+        return $pos ? $return : -$return;
     }
 
-    protected function formatSeconds($val) {
+    protected function formatSeconds($val)
+    {
         return sprintf("%02d:%02d:%02d", floor($val / 3600), floor(fmod(($val / 60), 60)), round(fmod($val, 60)));
     }
 
-    protected function formatTimestamp($val) {
+    protected function formatTimestamp($val)
+    {
         return date('Y-m-d H:i:s', $val);
     }
 
-    protected function formatRational($val, $fracIfSmall = false, $precision = 2) {
+    protected function formatRational($val, $fracIfSmall = false, $precision = 2)
+    {
         if (preg_match('/([\-]?)(\d+)([\/])(\d+)/', $val, $matches) !== false) {
             if ($fracIfSmall && ($matches[2] < $matches[4]) && ($matches[2] !== '0')) {
                 if ($matches[2] !== '1') {
@@ -942,7 +983,8 @@ class MetadataService {
         return $val;
     }
 
-    protected function evalRational($val) {
+    protected function evalRational($val)
+    {
         if (preg_match('/([\-]?)(\d+)([\/])(\d+)/', $val, $matches) !== false) {
             $val = $this->evalFraction($matches[1], $matches[2], $matches[4]);
         }
@@ -950,7 +992,8 @@ class MetadataService {
         return $val;
     }
 
-    protected function evalFraction($sig, $num, $den) {
+    protected function evalFraction($sig, $num, $den)
+    {
         $val = $num / $den;
         if ($sig === '-') {
             $val = -$val;
@@ -959,7 +1002,8 @@ class MetadataService {
         return $val;
     }
 
-    protected function formatComments($array) {
+    protected function formatComments($array)
+    {
         $return = array();
 
         foreach ($array as $key => $val) {
@@ -969,7 +1013,7 @@ class MetadataService {
 
             if (!is_numeric($key)) {
                 if ((($key = mb_convert_encoding($key, 'UTF-8', 'UTF-8, UTF-16')) !== false) && ($key !== $val)) {
-                    $val = '('.$key.') '.$val;
+                    $val = '(' . $key . ') ' . $val;
                 }
             }
 
@@ -981,7 +1025,8 @@ class MetadataService {
         return $return;
     }
 
-    protected function convertUcs2($v) {
+    protected function convertUcs2($v)
+    {
         if ($v) {
             $v = rtrim(mb_convert_encoding($v, 'UTF-8', 'UCS-2LE'), "\0");
         }
@@ -989,7 +1034,8 @@ class MetadataService {
         return $v;
     }
 
-    protected function getVal($key, &$array, &$array2 = null, &$array3 = null) {
+    protected function getVal($key, &$array, &$array2 = null, &$array3 = null)
+    {
         if (array_key_exists($key, $array)) {
             return $array[$key];
         }
@@ -1005,7 +1051,8 @@ class MetadataService {
         return null;
     }
 
-    protected function getValM($key, &$arrays) {
+    protected function getValM($key, &$arrays)
+    {
         foreach ($arrays as $array) {
             if (array_key_exists($key, $array)) {
                 return $array[$key];
@@ -1015,7 +1062,8 @@ class MetadataService {
         return null;
     }
 
-    protected function addVal($key, $val, &$array, $join = null, $sep = null) {
+    protected function addVal($key, $val, &$array, $join = null, $sep = null)
+    {
         if (is_array($val)) {
             if (isset($join)) {
                 $val = join($join, $val);
@@ -1051,7 +1099,8 @@ class MetadataService {
         $array[$key] = $val;
     }
 
-    protected function t($text, $parameters = array()) {
+    protected function t($text, $parameters = array())
+    {
         return $this->language->t($text, $parameters);
     }
 }
